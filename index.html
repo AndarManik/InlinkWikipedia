@@ -11,16 +11,49 @@
         <input type="submit" value="Submit">
     </form>
 
+    <div id="results"></div>
+
     <script>
     document.getElementById('wiki-form').addEventListener('submit', function(event) {
         event.preventDefault(); // to prevent the form from submitting normally
         var input = document.getElementById('wiki-input').value;
-        
-        // now, input contains the value the user entered
-        // you can add code here to handle the input, e.g., validate it, 
-        // make a request to the Wikipedia API, etc.
+        var lang = 'en';
+        var limit = 500;
+        var base_url = `https://${lang}.wikipedia.org/w/api.php`;
+        var params = new URLSearchParams({
+            action: 'query',
+            format: 'json',
+            list: 'backlinks',
+            bltitle: input,
+            bllimit: limit,
+            blnamespace: 0,
+            origin: '*'
+        });
+        var inlinks = [];
 
-        console.log(input); // for now, let's just log it to the console
+        async function getBacklinks() {
+            while (true) {
+                const response = await fetch(base_url + '?' + params.toString());
+                const data = await response.json();
+                if ('error' in data) {
+                    console.log(`Error: ${data.error.info}`);
+                    break;
+                }
+                const inlink_pages = data.query.backlinks;
+                for (let page of inlink_pages) {
+                    inlinks.push(page.title);
+                }
+                if ('continue' not in data) {
+                    break;
+                }
+                params.set('continue', data.continue.continue);
+                params.set('blcontinue', data.continue.blcontinue);
+            }
+            // Display the results
+            document.getElementById('results').textContent = inlinks.join('\n');
+        }
+        
+        getBacklinks().catch(console.error);
     });
     </script>
 </body>
